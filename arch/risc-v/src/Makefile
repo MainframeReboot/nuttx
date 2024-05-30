@@ -148,6 +148,9 @@ $(COBJS) $(UCOBJS): %$(OBJEXT): %.c
 crt0$(OBJEXT): %$(OBJEXT): %.c
 	$(call COMPILE, $<, $@)
 
+crt1$(OBJEXT): %$(OBJEXT): %.c
+	$(call COMPILE, $<, $@)
+
 ifeq ($(CONFIG_BUILD_FLAT),y)
 $(BIN): $(OBJS)
 	$(call ARCHIVE, $@, $(OBJS))
@@ -199,10 +202,18 @@ endif
 # Note that there may not be a head object if layout is handled
 # by the linker configuration.
 
-export_startup: $(STARTUP_OBJS)
-ifneq ($(STARTUP_OBJS),)
+export_startup: $(CSTARTUP_OBJS) $(CXXSTARTUP_OBJS)
+ifneq ($(CSTARTUP_OBJS),)
 	$(Q) if [ -d "$(EXPORT_DIR)/startup" ]; then \
-		cp -f $(STARTUP_OBJS) "$(EXPORT_DIR)/startup/."; \
+		cp -f $(CSTARTUP_OBJS) "$(EXPORT_DIR)/startup/."; \
+	 else \
+		echo "$(EXPORT_DIR)/startup does not exist"; \
+	exit 1; \
+	fi
+endif
+ifneq ($(CXXSTARTUP_OBJS),)
+	$(Q) if [ -d "$(EXPORT_DIR)/startup" ]; then \
+		cp -f $(CXXSTARTUP_OBJS) "$(EXPORT_DIR)/startup/."; \
 	 else \
 		echo "$(EXPORT_DIR)/startup does not exist"; \
 	exit 1; \

@@ -19,7 +19,8 @@
 ############################################################################
 
 ifeq ($(CONFIG_BUILD_KERNEL),y)
-STARTUP_OBJS = crt0$(OBJEXT)
+CSTARTUP_OBJS = crt0$(OBJEXT)
+CXXSTARTUP_OBJS = crt1$(OBJEXT)
 endif
 
 # Specify our general Assembly files

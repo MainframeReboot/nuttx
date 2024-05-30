@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/risc-v/src/common/crt0.c
+ * arch/risc-v/src/common/crt1.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -30,7 +30,6 @@
 #include <sys/types.h>
 #include <syscall.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "riscv_internal.h"
 
@@ -89,6 +88,95 @@ static void sig_trampoline(void)
 }
 
 /****************************************************************************
+ * Public Data
+ ****************************************************************************/
+
+/*
+    Linker defined symbols to .preinit_array, .init_array and .fini_array.
+
+    .ctors and .dtors are not used by RISC-V.
+ */
+extern initializer_t __preinit_array_start[];
+extern initializer_t __preinit_array_end[];
+extern initializer_t __init_array_start[];
+extern initializer_t __init_array_end[];
+extern initializer_t __fini_array_start[];
+extern initializer_t __fini_array_end[];
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+#ifdef CONFIG_HAVE_CXX
+
+/****************************************************************************
+ * Name: exec_preinit
+ *
+ * Description:
+ *   Calls startup functions prior to main entry point
+ *
+ ****************************************************************************/
+static void exec_preinit(void)
+{
+  initializer_t *preinit;
+
+  for(preinit = __preinit_array_start; preinit < __preinit_array_end; ++preinit)
+  {
+    initializer_t initializer = *preinit;
+
+    if (initializer)
+    {
+      initializer();
+    }
+  }
+}
+
+/****************************************************************************
+ * Name: exec_preinit
+ *
+ * Description:
+ *   Calls static constructors prior to main entry point
+ *
+ ****************************************************************************/
+static void exec_init(void)
+{
+  initializer_t *init;
+
+  for(init = __init_array_start; init < __init_array_end; ++init)
+  {
+    initializer_t initializer = *init;
+
+    if (initializer)
+    {
+      initializer();
+    }
+  }
+}
+
+/****************************************************************************
+ * Name: exec_fini
+ *
+ * Description:
+ *   Calls static destructors using atexit
+ *
+ ****************************************************************************/
+static void exec_fini(void)
+{
+  initializer_t *fini;
+
+  for(fini = __fini_array_start; fini < __fini_array_end; ++fini)
+  {
+    initializer_t initializer = *fini;
+
+    if (initializer)
+    {
+      initializer();
+    }
+  }
+}
+#endif
+
+/****************************************************************************
  * Public Functions
  ****************************************************************************/
 
@@ -122,12 +210,19 @@ void __start(int argc, char *argv[])
 
   ARCH_DATA_RESERVE->ar_sigtramp = (addrenv_sigtramp_t)sig_trampoline;
 
-  /******************************************************************
-  *  Do NOT include C++ constructor/destructor calls in this file.
-  *  This file is for C applications only. Refer to crt1.c for C++.
-  *******************************************************************/
+#ifdef CONFIG_HAVE_CXX
+/* Call preinit functions */
+  exec_preinit();
+
+  /* Call C++ constructors */
+  exec_init();
+
+  /* Setup so that C++ destructors called on task exit */
+  atexit(exec_fini);
+#endif
 
   /* Call the main() entry point passing argc and argv. */
+
   ret = main(argc, argv);
 
   /* Call exit() if/when the main() returns */
